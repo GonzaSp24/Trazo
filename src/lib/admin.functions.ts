@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getPrisma } from "./db.server";
+import { requireAdmin } from "./admin-auth.server";
 
 export type AdminVariant = { id: string; label: string; price: number; stock: number; isNew?: boolean };
 export type AdminCategory = { id: string; label: string };
@@ -15,6 +16,7 @@ export type AdminProduct = {
 
 // 1. Productos y categorías
 export const getAdminData = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
   const prisma = getPrisma();
   try {
     const [products, categories] = await Promise.all([
@@ -57,8 +59,9 @@ const saveSchema = z.object({
 
 // 2. Crear / actualizar (alta, edición y baja de variantes en una transacción)
 export const saveAdminProduct = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => saveSchema.parse(data))
+  .validator((data: unknown) => saveSchema.parse(data))
   .handler(async ({ data }) => {
+    await requireAdmin();
     const prisma = getPrisma();
     try {
       if (data.id === "nuevo") {
@@ -93,8 +96,9 @@ export const saveAdminProduct = createServerFn({ method: "POST" })
 
 // 3. Borrar (las variantes se borran en cascada)
 export const deleteAdminProduct = createServerFn({ method: "POST" })
-  .inputValidator((id: unknown) => z.string().min(1).parse(id))
+  .validator((id: unknown) => z.string().min(1).parse(id))
   .handler(async ({ data: id }) => {
+    await requireAdmin();
     const prisma = getPrisma();
     try {
       await prisma.product.delete({ where: { id } });

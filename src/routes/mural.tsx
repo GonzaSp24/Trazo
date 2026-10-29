@@ -4,6 +4,7 @@ import { ImagePlus, Magnet, RotateCcw, ShoppingBag, Shuffle } from "lucide-react
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
+import { uploadMuralImages } from "@/lib/storage";
 import { MAGNET_PACKS, formatPrice } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,8 @@ function Mural() {
   const offset = useRef({ dx: 0, dy: 0 });
   const fileInput = useRef<HTMLInputElement>(null);
   const { add } = useCart();
+  const filesBySrc = useRef(new Map<string, File>());
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     setMagnets((prev) => layout(pack.size, prev));
@@ -68,7 +71,7 @@ function Mural() {
 
   const onFiles = (files: FileList | null) => {
     if (!files) return;
-    const urls = Array.from(files).map((f) => URL.createObjectURL(f));
+    const urls = Array.from(files).map((f) => { const u = URL.createObjectURL(f); filesBySrc.current.set(u, f); return u; });
     setMagnets((ms) => {
       let k = 0;
       return ms.map((m) => (!m.src && k < urls.length ? { ...m, src: urls[k++] } : m));
@@ -164,12 +167,22 @@ function Mural() {
             variant="brush"
             size="lg"
             className="mt-6 w-full"
-            onClick={() => {
-              add({ id: `mural-${pack.size}-${Date.now()}`, name: `Mural de imanes x${pack.size}`, price: pack.price, image: magnets.find((m) => m.src)?.src });
-              toast.success(`Pack x${pack.size} agregado al carrito`);
+            disabled={adding}
+            onClick={async () => {
+              const files = magnets.map((m) => (m.src ? filesBySrc.current.get(m.src) : undefined)).filter((f): f is File => !!f);
+              setAdding(true);
+              try {
+                const photos = files.length ? await uploadMuralImages(files) : [];
+                add({ id: `mural-${pack.size}-${Date.now()}`, name: `Mural de imanes x${pack.size}`, price: pack.price, image: magnets.find((m) => m.src)?.src, photos });
+                toast.success(`Pack x${pack.size} agregado al carrito`);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "No se pudieron subir las fotos");
+              } finally {
+                setAdding(false);
+              }
             }}
           >
-            <ShoppingBag /> Agregar al carrito
+            <ShoppingBag /> {adding ? "Subiendo fotos…" : "Agregar al carrito"}
           </Button>
         </aside>
       </div>

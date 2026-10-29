@@ -3,7 +3,8 @@ import { ArrowRight, Magnet, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrushStroke } from "@/components/site/BrushStroke";
 import { ProductCard } from "@/components/site/ProductCard";
-import { featured } from "@/lib/products";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { catalogQuery } from "@/lib/catalog";
 import imanes from "@/assets/p-imanes.jpg";
 import stickers from "@/assets/p-stickers.jpg";
 
@@ -16,10 +17,15 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Tarjetas, stickers, pines, kits emprendedores e imanes con tus fotos." },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(catalogQuery),
+  errorComponent: ({ error }) => <section role="alert" className="mx-auto max-w-7xl px-5 py-24"><p className="font-hand text-3xl">No pudimos cargar la tienda.</p><p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p></section>,
+  notFoundComponent: () => <p className="px-5 py-24">No encontrado.</p>,
   component: Index,
 });
 
 function Index() {
+  const { data } = useSuspenseQuery(catalogQuery);
+  const featured = data.products.slice(0, 4);
   return (
     <>
       <section className="relative mx-auto grid max-w-7xl items-center gap-12 overflow-hidden px-5 pb-16 pt-14 md:grid-cols-2 md:pt-24">
@@ -64,6 +70,7 @@ function Index() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-6 md:gap-8 lg:grid-cols-4">
+          {featured.length === 0 && <p className="col-span-full text-muted-foreground">Pronto vas a ver nuestros productos acá.</p>}
           {featured.map((p, i) => (
             <ProductCard key={p.id} product={p} index={i} />
           ))}

@@ -1,7 +1,7 @@
 import type React from "react";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-export type CartItem = { id: string; name: string; price: number; image?: string | undefined; qty: number };
+export type CartItem = { id: string; name: string; price: number; image?: string | undefined; variant?: string | undefined; photos?: string[] | undefined; qty: number };
 
 type CartCtx = {
   items: CartItem[];

@@ -1,3 +1,4 @@
+import type React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
@@ -17,6 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteAdminProduct, getAdminData, saveAdminProduct, type AdminCategory, type AdminProduct, type AdminVariant } from "@/lib/admin.functions";
 import { uploadProductImage } from "@/lib/storage";
+import { checkAdmin, loginAdmin, logoutAdmin } from "@/lib/admin-auth.functions";
+import { useRouter } from "@tanstack/react-router";
+import { Lock, LogOut } from "lucide-react";
 
 const adminQuery = queryOptions({ queryKey: ["admin-data"], queryFn: () => getAdminData() });
 type FormProduct = AdminProduct & { file?: File };
@@ -32,11 +36,53 @@ export const Route = createFileRoute("/admin")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(adminQuery),
+  loader: async ({ context }) => {
+    const { ok } = await checkAdmin();
+    if (ok) await context.queryClient.ensureQueryData(adminQuery);
+    return { authed: ok };
+  },
+  notFoundComponent: () => <p className="px-5 py-24">No encontrado.</p>,
   pendingComponent: () => <section className="mx-auto flex max-w-6xl items-center gap-2 px-5 py-24 text-muted-foreground"><Loader2 className="size-5 animate-spin" /> Cargando…</section>,
   errorComponent: ({ error }) => <section role="alert" className="mx-auto max-w-6xl px-5 py-24"><p className="font-hand text-3xl">No pudimos conectar con la base de datos.</p><p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p></section>,
-  component: Admin,
+  component: AdminGate,
 });
+
+function AdminGate() {
+  const { authed } = Route.useLoaderData();
+  return authed ? <Admin /> : <AdminLogin />;
+}
+
+function AdminLogin() {
+  const router = useRouter();
+  const login = useServerFn(loginAdmin);
+  const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { ok } = await login({ data: { password: String(new FormData(e.currentTarget).get("password") ?? "") } });
+      if (ok) await router.invalidate();
+      else setError(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo ingresar");
+    } finally { setBusy(false); }
+  };
+  return (
+    <section className="mx-auto flex max-w-md flex-col px-5 py-24">
+      <form onSubmit={onSubmit} className="rounded-brush-alt border-2 border-foreground bg-card p-8 shadow-sticker">
+        <span className="grid h-12 w-12 place-items-center rounded-brush bg-gold shadow-sticker"><Lock className="size-6" /></span>
+        <h1 className="mt-5 text-3xl font-light">Panel de <span className="brush-underline font-semibold">Control</span></h1>
+        <div className="mt-6 grid gap-2">
+          <Label htmlFor="password">Contraseña</Label>
+          <Input id="password" name="password" type="password" autoComplete="current-password" autoFocus onChange={() => setError(false)} />
+          {error && <p className="text-sm text-destructive">Contraseña incorrecta</p>}
+        </div>
+        <Button type="submit" variant="gold" size="lg" className="mt-6 w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}Ingresar</Button>
+      </form>
+    </section>
+  );
+}
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const newVariant = (): AdminVariant => ({ id: uid(), label: "", price: 0, stock: 0, isNew: true });
@@ -47,6 +93,8 @@ function Admin() {
   const qc = useQueryClient();
   const saveFn = useServerFn(saveAdminProduct);
   const deleteFn = useServerFn(deleteAdminProduct);
+  const logoutFn = useServerFn(logoutAdmin);
+  const router = useRouter();
   const [editing, setEditing] = useState<FormProduct | null>(null);
   const [toDelete, setToDelete] = useState<AdminProduct | null>(null);
 
@@ -75,9 +123,14 @@ function Admin() {
           <span className="grid h-12 w-12 place-items-center rounded-brush bg-gold shadow-sticker"><LayoutDashboard className="size-6" /></span>
           Panel de <span className="brush-underline font-semibold">Control</span>
         </h1>
-        <Button variant="gold" size="lg" onClick={() => setEditing(emptyProduct())}>
-          <Plus /> Nuevo Producto
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="gold" size="lg" onClick={() => setEditing(emptyProduct())}>
+            <Plus /> Nuevo Producto
+          </Button>
+          <Button variant="sketch" size="lg" aria-label="Salir" onClick={async () => { await logoutFn(); qc.removeQueries({ queryKey: adminQuery.queryKey }); await router.invalidate(); }}>
+            <LogOut />
+          </Button>
+        </div>
       </div>
 
       <div className="mt-10 overflow-hidden rounded-brush-alt border-2 border-foreground bg-card shadow-sticker">

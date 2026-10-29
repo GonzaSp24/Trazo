@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
-import { toast } from "sonner";
+import { buildWhatsAppUrl } from "@/lib/order";
 
 const links = [
   { to: "/", label: "Inicio" },
@@ -69,6 +69,7 @@ export function CartSheet() {
               {i.image && <img src={i.image} alt="" className="h-16 w-16 rounded-md object-cover" />}
               <div className="flex-1">
                 <p className="text-sm font-medium">{i.name}</p>
+                {i.variant && <p className="text-xs text-muted-foreground">{i.variant}</p>}
                 <p className="text-sm text-muted-foreground">{formatPrice(i.price)}</p>
               </div>
               <div className="flex items-center gap-1">
@@ -84,8 +85,8 @@ export function CartSheet() {
             <span className="uppercase tracking-[0.2em] text-sm">Total</span>
             <span className="font-hand text-3xl">{formatPrice(total)}</span>
           </div>
-          <Button variant="brush" size="lg" className="w-full" disabled={!items.length} onClick={() => toast("¡Gracias! El pago llegará pronto.")}>
-            Finalizar compra
+          <Button variant="brush" size="lg" className="w-full" disabled={!items.length} onClick={() => window.open(buildWhatsAppUrl(items), "_blank", "noopener")}>
+            Finalizar compra por WhatsApp
           </Button>
         </div>
       </SheetContent>
@@ -99,22 +100,47 @@ export function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:grid-cols-3">
         <div>
           <img src={logo} alt="Trazo Espacio Gráfico" className="h-14 w-auto" />
-          <p className="mt-4 max-w-xs text-sm text-muted-foreground">Imprimimos ideas con oficio. Diseño e impresión para emprendedores, marcas y momentos.</p>
+          <p className="mt-4 max-w-xs text-sm text-muted-foreground">
+            Imprimimos ideas con oficio. Diseño e impresión para emprendedores, marcas y momentos.
+          </p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Tienda</p>
           <ul className="mt-4 space-y-2 text-sm">
             {links.map((l) => (
-              <li key={l.to}><Link to={l.to} className="hover:brush-underline">{l.label}</Link></li>
+              <li key={l.to}>
+                <Link to={l.to} className="hover:brush-underline">{l.label}</Link>
+              </li>
             ))}
           </ul>
         </div>
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Contacto</p>
           <ul className="mt-4 space-y-2 text-sm">
-            <li className="flex items-center gap-2"><Instagram className="size-4" /> @trazo.grafica</li>
-            <li className="flex items-center gap-2"><Mail className="size-4" /> hola@trazografica.com</li>
-            <li className="flex items-center gap-2"><MapPin className="size-4" /> Buenos Aires, Argentina</li>
+            <li>
+              <a
+                href="https://instagram.com/trazo.grafica"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-gold transition-colors"
+              >
+                <Instagram className="size-4" />
+                @trazo.grafica
+              </a>
+            </li>
+            <li>
+              <a
+                href="mailto:hola@trazografica.com"
+                className="flex items-center gap-2 hover:text-gold transition-colors"
+              >
+                <Mail className="size-4" />
+                hola@trazografica.com
+              </a>
+            </li>
+            <li className="flex items-center gap-2">
+              <MapPin className="size-4" />
+              Río Cuarto, Córdoba, Argentina
+            </li>
           </ul>
         </div>
       </div>

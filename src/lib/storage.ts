@@ -12,13 +12,16 @@ function getClient() {
 }
 
 /** Sube una foto al bucket público "products" y devuelve su URL pública. */
-export async function uploadProductImage(file: File): Promise<string> {
+export async function uploadProductImage(file: File, folder = ""): Promise<string> {
     if (!file.type.startsWith("image/")) throw new Error("El archivo debe ser una imagen");
     if (file.size > 5 * 1024 * 1024) throw new Error("La imagen supera los 5 MB");
     const sb = getClient();
     const ext = file.name.split(".").pop() || "jpg";
-    const path = `${crypto.randomUUID()}.${ext}`;
+    const path = `${folder}${crypto.randomUUID()}.${ext}`;
     const { error } = await sb.storage.from(BUCKET).upload(path, file, { contentType: file.type });
     if (error) throw new Error(`No se pudo subir la imagen: ${error.message}`);
     return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
+
+/** Sube las fotos de un mural a "products/murales/". */
+export const uploadMuralImages = (files: File[]) => Promise.all(files.map((f) => uploadProductImage(f, "murales/")));
