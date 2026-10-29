@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  label    String    // Ej: "Stickers", "Tarjetas"
+  slug     String    @unique // Ej: "stickers", "tarjetas"
+  products Product[]
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  image       String?
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  variants    Variant[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Variant {
+  id        String  @id @default(cuid())
+  label     String  // Ej: "Troquelados x50", "Clásicas x100"
+  price     Int
+  stock     Int     @default(0) 
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
